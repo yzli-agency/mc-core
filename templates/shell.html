@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Mission Control v2</title>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #1e1e2e;
+      --text: #e2e2f0;
+      --muted: #6b6b8a;
+      --accent: #6c63ff;
+      --accent-dim: rgba(108,99,255,0.12);
+      --sidebar-w: 220px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; min-height: 100vh; }
+
+    /* SIDEBAR */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+    .brand {
+      padding: 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-logo {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      letter-spacing: 0.05em;
+    }
+    .brand-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+    .brand-sub  { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.15em; }
+
+    #sidenav { flex: 1; padding: 0.75rem 0; overflow-y: auto; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.55rem 1rem;
+      font-size: 0.84rem;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.15s, color 0.15s;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+    }
+    .nav-item:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
+    .nav-item i { font-size: 1rem; }
+
+    .sidebar-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; flex-shrink: 0; }
+    .ws-dot.connected { background: #2ecc71; }
+    .ws-dot.error { background: #e74c3c; }
+
+    /* MAIN */
+    #main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    /* VIEWS */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* No modules state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-state i { font-size: 3rem; opacity: 0.4; }
+    .empty-state h2 { font-size: 1.25rem; font-weight: 600; color: var(--text); }
+    .empty-state p { max-width: 380px; line-height: 1.6; }
+
+    /* Module view containers */
+    .module-view { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Toast */
+    #toastContainer {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.5rem; z-index: 9999;
+    }
+    .toast {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.84rem; max-width: 320px;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="brand">
+    <span class="brand-logo">MC</span>
+    <div>
+      <div class="brand-name">MISSION CONTROL</div>
+      <div class="brand-sub">v2 · modulaire</div>
+    </div>
+  </div>
+
+  <nav id="sidenav">
+    <!-- Items injectés dynamiquement par JS depuis /api/nav -->
+    <a class="nav-item active" data-view="__home" onclick="showView('__home', this)">
+      <i class="ph-light ph-house"></i> Overview
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="ws-dot" id="wsDot"></div>
+    <span id="wsLabel">connecting…</span>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main id="main">
+  <!-- HOME VIEW (toujours présente) -->
+  <div id="view-__home" class="view active module-view">
+    <h1 style="font-size:1.5rem;margin-bottom:1rem">Mission Control <span style="font-size:0.9rem;color:var(--muted);font-weight:400">v2 — modulaire</span></h1>
+    <div id="homeModules"></div>
+  </div>
+
+  <!-- Les autres views sont injectées par les modules -->
+</main>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<script>
+// ─── Core Shell JS ────────────────────────────────────────────────────────────
+
+let _modules = [];
+let _ws = null;
+
+// Navigation
+function showView(id, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const view = document.getElementById('view-' + id);
+  if (view) view.classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// Toast
+function toast(msg, level = 'info') {
+  const colors = { info: '#6c63ff', success: '#2ecc71', warn: '#f39c12', error: '#e74c3c' };
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.borderLeftColor = colors[level] || colors.info;
+  el.style.borderLeftWidth = '3px';
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// WebSocket
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  _ws = new WebSocket(`${proto}://${location.host}/ws/events`);
+  const dot = document.getElementById('wsDot');
+  const label = document.getElementById('wsLabel');
+
+  _ws.onopen = () => {
+    dot.className = 'ws-dot connected';
+    label.textContent = 'connecté';
+  };
+  _ws.onclose = () => {
+    dot.className = 'ws-dot error';
+    label.textContent = 'déconnecté';
+    setTimeout(connectWS, 3000);
+  };
+  _ws.onerror = () => {
+    dot.className = 'ws-dot error';
+  };
+  _ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      // Dispatcher aux modules enregistrés
+      window.__mcBusListeners?.forEach(fn => fn(msg));
+    } catch {}
+  };
+}
+
+// Bus listeners (les modules s'enregistrent ici)
+window.__mcBusListeners = [];
+window.mcBus = {
+  on: (fn) => window.__mcBusListeners.push(fn),
+  off: (fn) => { window.__mcBusListeners = window.__mcBusListeners.filter(f => f !== fn); },
+  emit: async (event, data) => {
+    // Émet localement uniquement (le serveur est la source de vérité)
+    window.__mcBusListeners.forEach(fn => fn({ event, data, level: 'info' }));
+  },
+};
+
+// API helper
+window.mcApi = async (path, opts = {}) => {
+  const r = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+};
+
+// Charger la nav depuis /api/nav
+async function loadNav() {
+  try {
+    const items = await mcApi('/api/nav');
+    const nav = document.getElementById('sidenav');
+
+    items.forEach(item => {
+      const a = document.createElement('a');
+      a.className = 'nav-item';
+      a.dataset.view = item.view_id;
+      a.innerHTML = `<i class="ph-light ${item.icon}"></i> ${item.label}`;
+      a.onclick = () => showView(item.view_id, a);
+      nav.appendChild(a);
+    });
+  } catch (e) {
+    console.warn('Nav load failed:', e);
+  }
+}
+
+// Charger les modules installés pour la home
+async function loadHomeModules() {
+  try {
+    const data = await mcApi('/api/modules');
+    _modules = data.modules || [];
+    const el = document.getElementById('homeModules');
+
+    if (!_modules.length) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <i class="ph-light ph-puzzle-piece"></i>
+          <h2>Aucun module installé</h2>
+          <p>Mission Control est une coquille vide. Installez des modules via le marketplace ou en modifiant <code>modules/installed.json</code>.</p>
+          <p style="margin-top:0.5rem;font-size:0.8rem;font-family:monospace;color:var(--muted)">GET /api/modules</p>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <p style="color:var(--muted);margin-bottom:1.5rem">${_modules.length} module(s) actif(s)</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+        ${_modules.map(m => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem">
+            <div style="font-weight:600;margin-bottom:0.25rem">${m.name}</div>
+            <div style="font-size:0.75rem;color:var(--muted)">${m.slug}</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.5rem">${m.version}</div>
+          </div>
+        `).join('')}
+      </div>`;
+  } catch (e) {
+    console.error('Module load failed:', e);
+  }
+}
+
+// Charger les scripts frontend de chaque module
+async function loadModuleViews() {
+  try {
+    const data = await mcApi('/api/modules');
+    const mods = data.modules || [];
+    for (const mod of mods) {
+      const safe = mod.slug.replace('/', '-');
+      // Injecter le script du module
+      const script = document.createElement('script');
+      script.src = `/static/modules/${safe}/view.js`;
+      script.onerror = () => {}; // Silently fail if no frontend
+      document.head.appendChild(script);
+    }
+  } catch {}
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  connectWS();
+  loadNav();
+  loadHomeModules();
+  loadModuleViews();
+});
+</script>
+</body>
+</html>
