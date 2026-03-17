@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { getPipeline, generatePipeline, getClients, getProjects } from '@/lib/api'
+import { getPipeline, generatePipeline, getClients, getProjects, getAllProjects } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -104,7 +104,7 @@ export function Pipeline() {
   const [projectSlug, setProjectSlug] = useState('')
 
   const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: getClients })
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: getProjects })
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: getAllProjects })
 
   const { data: pipeline, isLoading } = useQuery({
     queryKey: ['pipeline', clientSlug, projectSlug],

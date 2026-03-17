@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getClients, getProjects, createClient } from '@/lib/api'
+import { getClients, getProjects, getAllProjects, createClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,7 @@ export function Clients() {
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: getAllProjects,
   })
 
   const mutation = useMutation({

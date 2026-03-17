@@ -6,7 +6,7 @@ import {
   Draggable,
   type DropResult,
 } from '@hello-pangea/dnd'
-import { getKanban, moveTask, triggerTask, getClients, getProjects } from '@/lib/api'
+import { getKanban, moveTask, triggerTask, getClients, getProjects, getAllProjects } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,7 +34,7 @@ export function Kanban() {
   const [projectSlug, setProjectSlug] = useState<string>('')
 
   const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: getClients })
-  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: getProjects })
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: getAllProjects })
 
   const { data: board, isLoading } = useQuery({
     queryKey: ['kanban', clientSlug, projectSlug],
